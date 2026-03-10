@@ -467,3 +467,32 @@ pub fn print_health(health_arg: Option<String>) -> std::io::Result<()> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::runtime_warnings;
+    use tempfile::tempdir;
+
+    #[test]
+    fn runtime_warnings_reports_missing_directories() {
+        let existing = tempdir().unwrap();
+        let missing = existing.path().join("missing-runtime");
+        let mut output = Vec::new();
+
+        runtime_warnings(&mut output, &[missing]).unwrap();
+
+        let output = String::from_utf8(output).unwrap();
+        assert!(output.contains("Runtime directory does not exist:"));
+    }
+
+    #[test]
+    fn runtime_warnings_reports_empty_directories() {
+        let empty = tempdir().unwrap();
+        let mut output = Vec::new();
+
+        runtime_warnings(&mut output, &[empty.path().to_path_buf()]).unwrap();
+
+        let output = String::from_utf8(output).unwrap();
+        assert!(output.contains("Runtime directory is empty:"));
+    }
+}
