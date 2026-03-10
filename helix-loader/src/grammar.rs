@@ -87,6 +87,10 @@ fn ensure_git_is_available() -> Result<()> {
 }
 
 pub fn fetch_grammars() -> Result<()> {
+    fetch_grammars_with_progress(false)
+}
+
+pub fn fetch_grammars_with_progress(verbose: bool) -> Result<()> {
     ensure_git_is_available()?;
 
     // We do not need to fetch local grammars.
@@ -101,12 +105,49 @@ pub fn fetch_grammars() -> Result<()> {
     let mut git_up_to_date = 0;
     let mut non_git = Vec::new();
 
-    for (grammar_id, res) in results {
+    let total = results.len();
+    for (idx, (grammar_id, res)) in results.into_iter().enumerate() {
         match res {
-            Ok(FetchStatus::GitUpToDate) => git_up_to_date += 1,
-            Ok(FetchStatus::GitUpdated { revision }) => git_updated.push((grammar_id, revision)),
-            Ok(FetchStatus::NonGit) => non_git.push(grammar_id),
-            Err(e) => errors.push((grammar_id, e)),
+            Ok(FetchStatus::GitUpToDate) => {
+                if verbose {
+                    println!(
+                        "[{}/{}] {} already up to date",
+                        idx + 1,
+                        total,
+                        grammar_id
+                    );
+                }
+                git_up_to_date += 1;
+            }
+            Ok(FetchStatus::GitUpdated { revision }) => {
+                if verbose {
+                    println!(
+                        "[{}/{}] {} updated to {}",
+                        idx + 1,
+                        total,
+                        grammar_id,
+                        revision
+                    );
+                }
+                git_updated.push((grammar_id, revision));
+            }
+            Ok(FetchStatus::NonGit) => {
+                if verbose {
+                    println!(
+                        "[{}/{}] {} skipped (non-git grammar)",
+                        idx + 1,
+                        total,
+                        grammar_id
+                    );
+                }
+                non_git.push(grammar_id);
+            }
+            Err(e) => {
+                if verbose {
+                    println!("[{}/{}] {} failed", idx + 1, total, grammar_id);
+                }
+                errors.push((grammar_id, e));
+            }
         }
     }
 
@@ -148,6 +189,10 @@ pub fn fetch_grammars() -> Result<()> {
 }
 
 pub fn build_grammars(target: Option<String>) -> Result<()> {
+    build_grammars_with_progress(target, false)
+}
+
+pub fn build_grammars_with_progress(target: Option<String>, verbose: bool) -> Result<()> {
     ensure_git_is_available()?;
 
     let grammars = get_grammar_configs()?;
@@ -160,11 +205,32 @@ pub fn build_grammars(target: Option<String>) -> Result<()> {
     let mut already_built = 0;
     let mut built = Vec::new();
 
-    for (grammar_id, res) in results {
+    let total = results.len();
+    for (idx, (grammar_id, res)) in results.into_iter().enumerate() {
         match res {
-            Ok(BuildStatus::AlreadyBuilt) => already_built += 1,
-            Ok(BuildStatus::Built) => built.push(grammar_id),
-            Err(e) => errors.push((grammar_id, e)),
+            Ok(BuildStatus::AlreadyBuilt) => {
+                if verbose {
+                    println!(
+                        "[{}/{}] {} already built",
+                        idx + 1,
+                        total,
+                        grammar_id
+                    );
+                }
+                already_built += 1;
+            }
+            Ok(BuildStatus::Built) => {
+                if verbose {
+                    println!("[{}/{}] {} built", idx + 1, total, grammar_id);
+                }
+                built.push(grammar_id);
+            }
+            Err(e) => {
+                if verbose {
+                    println!("[{}/{}] {} failed", idx + 1, total, grammar_id);
+                }
+                errors.push((grammar_id, e));
+            }
         }
     }
 
