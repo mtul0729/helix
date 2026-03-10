@@ -91,7 +91,16 @@ pub fn general() -> std::io::Result<()> {
             .collect::<Vec<_>>()
             .join(";")
     )?;
-    for rt_dir in rt_dirs.iter() {
+    runtime_warnings(&mut stdout, &rt_dirs)?;
+
+    Ok(())
+}
+
+fn runtime_warnings(
+    stdout: &mut impl Write,
+    rt_dirs: &[std::path::PathBuf],
+) -> std::io::Result<()> {
+    for rt_dir in rt_dirs {
         if let Ok(path) = std::fs::read_link(rt_dir) {
             let msg = format!(
                 "Runtime directory {} is symlinked to: {}",
@@ -450,7 +459,11 @@ pub fn print_health(health_arg: Option<String>) -> std::io::Result<()> {
             writeln!(std::io::stdout().lock())?;
             languages_all()?;
         }
-        Some(lang) => language(lang.to_string())?,
+        Some(lang) => {
+            language(lang.to_string())?;
+            writeln!(std::io::stdout().lock())?;
+            runtime_warnings(&mut std::io::stdout().lock(), &helix_loader::runtime_dirs())?;
+        }
     }
     Ok(())
 }
