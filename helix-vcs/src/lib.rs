@@ -11,6 +11,8 @@ use std::{
 
 #[cfg(feature = "git")]
 mod git;
+#[cfg(feature = "jj")]
+mod jj;
 
 mod diff;
 
@@ -82,6 +84,8 @@ impl Default for DiffProviderRegistry {
         // currently only git is supported
         // TODO make this configurable when more providers are added
         let providers = vec![
+            #[cfg(feature = "jj")]
+            DiffProvider::Jj,
             #[cfg(feature = "git")]
             DiffProvider::Git,
             DiffProvider::None,
@@ -96,6 +100,8 @@ impl Default for DiffProviderRegistry {
 /// `Copy` is simply to ensure the `clone()` call is the simplest it can be.
 #[derive(Copy, Clone)]
 enum DiffProvider {
+    #[cfg(feature = "jj")]
+    Jj,
     #[cfg(feature = "git")]
     Git,
     None,
@@ -104,6 +110,8 @@ enum DiffProvider {
 impl DiffProvider {
     fn get_diff_base(&self, file: &Path) -> Result<Vec<u8>> {
         match self {
+            #[cfg(feature = "jj")]
+            Self::Jj => jj::get_diff_base(file),
             #[cfg(feature = "git")]
             Self::Git => git::get_diff_base(file),
             Self::None => bail!("No diff support compiled in"),
@@ -112,6 +120,8 @@ impl DiffProvider {
 
     fn get_current_head_name(&self, file: &Path) -> Result<Arc<ArcSwap<Box<str>>>> {
         match self {
+            #[cfg(feature = "jj")]
+            Self::Jj => jj::get_current_head_name(file),
             #[cfg(feature = "git")]
             Self::Git => git::get_current_head_name(file),
             Self::None => bail!("No diff support compiled in"),
@@ -124,6 +134,8 @@ impl DiffProvider {
         f: impl Fn(Result<FileChange>) -> bool,
     ) -> Result<()> {
         match self {
+            #[cfg(feature = "jj")]
+            Self::Jj => jj::for_each_changed_file(cwd, f),
             #[cfg(feature = "git")]
             Self::Git => git::for_each_changed_file(cwd, f),
             Self::None => bail!("No diff support compiled in"),
